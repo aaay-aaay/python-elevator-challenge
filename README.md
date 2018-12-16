@@ -1,4 +1,4 @@
-# So You Think You Can Program An Elevator
+# I Think You Can Program An Elevator
 
 Many of us ride elevators every day. We feel like we understand how they work, how they decide where to go. If you were asked to put it into words, you might say that an elevator goes wherever it's told, and in doing so goes as far in one direction as it can before turning around. Sounds simple, right? Can you put it into code?
 
