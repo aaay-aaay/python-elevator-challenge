@@ -18,7 +18,9 @@ class ElevatorLogic(object):
 
     def __init__(self):
         # Feel free to add any instance variables you want.
-        self.destination_floors = []
+        self.selected_floors = []
+        self.called_floors_up = []
+        self.called_floors_down = []
         self.callbacks = None
         self.direction = None
 
@@ -27,15 +29,6 @@ class ElevatorLogic(object):
             return UP
         elif here > there:
             return DOWN
-    
-    def queue_floor(self, floor):
-        if len(self.destination_floors) == 0:
-            self.direction = None
-        if self.direction is not None:
-            self.destination_floors.append(floor)
-            return
-        current_floor = self.callbacks.current_floor
-        self.direction = self.cmp_floors(current_floor, floor)
     
     def on_called(self, floor, direction):
         """
@@ -46,8 +39,12 @@ class ElevatorLogic(object):
         floor: the floor that the elevator is being called to
         direction: the direction the caller wants to go, up or down
         """
-        self.queue_floor(floor)
-        self.destination_floors.append(floor)
+        if direction == UP:
+            self.called_floors_up.append(floor)
+        elif direction == DOWN:
+            self.called_floors_down.append(floor)
+        if len(self.selected_floors) == 0:
+            self.selected_floors.append(floor)
 
     def on_floor_selected(self, floor):
         """
@@ -57,17 +54,26 @@ class ElevatorLogic(object):
 
         floor: the floor that was requested
         """
-        self.queue_floor(floor)
-        self.destination_floors.append(floor)
+        self.selected_floors.append(floor)
 
     def on_floor_changed(self):
         """
         This lets you know that the elevator has moved one floor up or down.
         You should decide whether or not you want to stop the elevator.
         """
-        if self.callbacks.current_floor in self.destination_floors:
+        called_floors = []
+        if self.direction == UP:
+            called_floors = self.called_floors_up
+        elif self.direction == DOWN:
+            called_floors = self.called_floors_down
+        current_floor = self.callbacks.current_floor
+        if current_floor in called_floors or current_floor in self.selected_floors:
             self.callbacks.motor_direction = None
-            self.destination_floors.remove(self.callbacks.current_floor)
+            for l in [self.called_floors_up, self.called_floors_down, self.selected_floors]:
+                if current_floor in l:
+                    l.remove(current_floor)
+        if current_floor in [1, FLOOR_COUNT]:
+            self.callbacks.motor_direction = None
 
     def on_ready(self):
         """
@@ -77,4 +83,17 @@ class ElevatorLogic(object):
         """
         if len([floor for floor in self.destination_floors if self.cmp_floors(self.callbacks.current_floor, floor) == self.direction]) == 0:
             self.direction = None
+        if self.direction is None and len(self.destination_floors) != 0:
+            for d in [UP, DOWN]:
+                if all(self.cmp_floors(self.callbacks.current_floor, floor) == d for floor in self.destination_floors):
+                    self.direction = d
+                    break
         self.callbacks.motor_direction = self.direction
+    
+    @property
+    def destination_floors(self):
+        if self.direction == UP:
+            return self.selected_floors + self.called_floors_up
+        elif self.direction == DOWN:
+            return self.selected_floors + self.called_floors_down
+        return self.selected_floors + self.called_floors_up + self.called_floors_down
